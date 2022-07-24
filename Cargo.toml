@@ -1,0 +1,24 @@
+[package]
+name = "egui_pigeon"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+pigeon-2d = { path = "../pigeon/pigeon" }
+pigeon-parrot = { path = "../pigeon/parrot" }
+wgpu = "0.13"
+egui = {version = "0.18.1", features = ["bytemuck"]}
+bytemuck = {version = "1.9.1", features = ["derive"]}
+euclid = "0.22"
+log = "0.4"
+
+[dev-dependencies]
+env_logger = "0.9"
+winit = "0.26"
+egui-winit = "0.18"
+paste = "1.0"
+pollster = "0.2"
+egui_demo_lib = "0.18"
+itertools = "0.10"

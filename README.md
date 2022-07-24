@@ -1,2 +1,4 @@
-# egui_pigeon
-An egui implementation for pigeon
+# Egui pigeon
+An egui implementation for pigeon.
+
+Based off egui wgpu implementation.
