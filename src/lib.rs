@@ -136,7 +136,7 @@ impl<'a> Plumber<'a> for EguiPipe {
                     Some("Egui texture bind group"),
                 ),
             ]),
-            shader: parrot::shader::ShaderFile::Wgsl(include_str!("./egui_2.wgsl")),
+            shader: parrot::shader::ShaderFile::Wgsl(include_str!("./egui.wgsl")),
             name: Some("Egui pipe"),
         }
     }
@@ -306,6 +306,7 @@ impl pigeon_2d::pipeline::Render for EguiPipe {
         // Set buffers
         pass.set_parrot_vertex_buffer(&self.vertex_buffer);
         pass.set_parrot_index_buffer_32(&self.index_buffer);
+        pass.set_binding(&self.bindings[0], &[]);
 
         for group in &self.groups {
             if !group.pixel_rect.is_empty() {
@@ -398,19 +399,18 @@ pub fn egui_parrot_pipeline(
             push_constant_ranges: &[],
         });
 
-    let (src_factor, dst_factor, operation) = parrot::pipeline::Blending::default().as_wgpu();
     let targets = [Some(wgpu::ColorTargetState {
         format: wgpu::TextureFormat::Bgra8UnormSrgb,
         blend: Some(wgpu::BlendState {
             color: wgpu::BlendComponent {
-                src_factor,
-                dst_factor,
-                operation,
+                src_factor: wgpu::BlendFactor::One,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
             },
             alpha: wgpu::BlendComponent {
-                src_factor,
-                dst_factor,
-                operation,
+                src_factor: wgpu::BlendFactor::OneMinusDstAlpha,
+                dst_factor: wgpu::BlendFactor::One,
+                operation: wgpu::BlendOperation::Add,
             },
         }),
         write_mask: wgpu::ColorWrites::ALL,

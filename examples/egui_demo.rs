@@ -3,7 +3,7 @@ extern crate winit;
 use egui_pigeon::{setup, EguiPipe, ScreenDescriptor};
 use euclid::Size2D;
 use euclid::Transform3D;
-use parrot::{painter::PassOp, transform::*, Painter, Plumber};
+use parrot::{painter::PassOp, transform::*, Painter};
 use pigeon_2d::pigeon;
 use pigeon_2d::{pigeon::OPENGL_TO_WGPU_MATRIX, pipeline::Render};
 use pigeon_parrot as parrot;
@@ -14,13 +14,15 @@ use winit::event_loop::ControlFlow;
 
 pigeon!( | | EguiPipe >> setup => egui);
 
+struct RequestRepaintEvent;
+
 fn main() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Debug)
         .init();
 
     // Create an event loop
-    let event_loop = winit::event_loop::EventLoop::new();
+    let event_loop = winit::event_loop::EventLoop::with_user_event();
     // Create a window to draw to
     let window = winit::window::WindowBuilder::new()
         .with_title("Egui demo")
@@ -52,49 +54,63 @@ fn main() {
     let ctx = egui::Context::default();
     let mut demo_windows = egui_demo_lib::DemoWindows::default();
 
-    event_loop.run(move |event, _, control_flow| match event {
-        Event::WindowEvent {
-            window_id: _,
-            event: win_event,
-            ..
-        } => match win_event {
-            WindowEvent::CloseRequested => {
-                println!("The close button was pressed; stopping");
-                *control_flow = ControlFlow::Exit;
-            }
-            WindowEvent::Resized(size) => {
-                let size = euclid::Size2D::new(size.width, size.height);
-                p.paint
-                    .configure(size, wgpu::PresentMode::Fifo, wgpu::TextureFormat::Bgra8UnormSrgb);
-                let size = euclid::Size2D::new(size.width as f32, size.height as f32);
-                p.update_size(size);
-            }
-            _ => {
+    let event_loop_proxy = egui::mutex::Mutex::new(event_loop.create_proxy());
+    ctx.set_request_repaint_callback(move || {
+        event_loop_proxy.lock().send_event(RequestRepaintEvent).ok();
+    });
+
+    event_loop.run(move |event, _, control_flow| {
+        match event {
+            Event::WindowEvent {
+                window_id: _,
+                event: win_event,
+                ..
+            } => {
+                match win_event {
+                    WindowEvent::CloseRequested => {
+                        println!("The close button was pressed; stopping");
+                        *control_flow = ControlFlow::Exit;
+                    }
+                    WindowEvent::Resized(size) => {
+                        let size = euclid::Size2D::new(size.width, size.height);
+                        p.paint
+                            .configure(size, wgpu::PresentMode::Fifo, wgpu::TextureFormat::Bgra8UnormSrgb);
+                        let size = euclid::Size2D::new(size.width as f32, size.height as f32);
+                        p.update_size(size);
+                    }
+                    _ => {
+                        window.request_redraw();
+                    }
+                }
+                state.on_event(&ctx, &win_event);
+            },
+            Event::UserEvent(RequestRepaintEvent) => {
                 window.request_redraw();
             }
-        },
-        Event::RedrawRequested(_) => {
-            let raw_input = state.take_egui_input(&window);
-            let sd = ScreenDescriptor {
-                size_in_pixels: [p.screen.width as u32, p.screen.height as u32],
-                pixels_per_point: state.pixels_per_point(),
-            };
-            let full_output = ctx.run(raw_input, |ctx| {
-                demo_windows.ui(&ctx);
-            });
-            state.handle_platform_output(&window, &ctx, full_output.platform_output);
-            let clipped_primatives = ctx.tessellate(full_output.shapes);
-            p.egui.prepare(
-                (full_output.textures_delta, clipped_primatives, sd),
-                &mut p.paint,
-            );
-            custom_render::draw_cust(
-                &mut p,
-                false,
-                |_| {},
-                |p, _c, mut pass, _ob| {p.egui.render(&mut p.paint, &mut pass);}
-            );
+            Event::RedrawRequested(_) => {
+                let raw_input = state.take_egui_input(&window);
+                let sd = ScreenDescriptor {
+                    size_in_pixels: [p.screen.width as u32, p.screen.height as u32],
+                    pixels_per_point: state.pixels_per_point(),
+                };
+                let full_output = ctx.run(raw_input, |ctx| {
+                    demo_windows.ui(&ctx);
+                });
+                state.handle_platform_output(&window, &ctx, full_output.platform_output);
+                let clipped_primatives = ctx.tessellate(full_output.shapes);
+                p.paint.update_pipeline(&mut p.egui, (full_output.textures_delta, clipped_primatives, sd));
+                custom_render::draw_cust(
+                    &mut p,
+                    false,
+                    |_| {},
+                    |p, _c, mut pass, _ob| {
+                        pass.push_debug_group("Egui rpass");
+                        p.egui.render(&mut p.paint, &mut pass);
+                        pass.pop_debug_group();
+                    }
+                );
+            }
+            _ => (),
         }
-        _ => (),
     });
 }

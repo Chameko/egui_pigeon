@@ -29,15 +29,6 @@ fn unpack_color(color: u32) -> vec4<f32> {
     );
 }
 
-fn position_from_screen(screen_pos: vec2<f32>) -> vec4<f32> {
-    return vec4<f32>(
-        2.0 * screen_pos.x / r_locals.screen_size.x - 1.0,
-        1.0 - 2.0 * screen_pos.y / r_locals.screen_size.y,
-        0.0,
-        1.0,
-    );
-}
-
 @vertex
 fn vs_main(
     @location(0) a_pos: vec2<f32>,
@@ -48,7 +39,12 @@ fn vs_main(
     out.tex_coord = a_tex_coord;
     let color = unpack_color(a_color);
     out.color = vec4<f32>(linear_from_srgb(color.rgb), color.a / 255.0);
-    out.position = position_from_screen(a_pos);
+    out.position = vec4<f32>(
+        2.0 * a_pos.x / r_locals.screen_size.x - 1.0,
+        1.0 - 2.0 * a_pos.y / r_locals.screen_size.y,
+        0.0,
+        1.0,
+    );
     return out;
 }
 
@@ -62,7 +58,12 @@ fn vs_conv_main(
     out.tex_coord = a_tex_coord;
     let color = unpack_color(a_color);
     out.color = vec4<f32>(color.rgba / 255.0);
-    out.position = position_from_screen(a_pos);
+    out.position = vec4<f32>(
+        2.0 * a_pos.x / r_locals.screen_size.x - 1.0,
+        1.0 - 2.0 * a_pos.y / r_locals.screen_size.y,
+        0.0,
+        1.0,
+    );
     return out;
 }
 
