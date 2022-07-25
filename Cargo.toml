@@ -11,8 +11,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-pigeon-2d = { path = "../pigeon/pigeon" }
-pigeon-parrot = { path = "../pigeon/parrot" }
+pigeon-2d = "0.5"
+pigeon-parrot = "0.4"
 wgpu = "0.13"
 egui = {version = "0.18.1", features = ["bytemuck"]}
 bytemuck = {version = "1.9.1", features = ["derive"]}
